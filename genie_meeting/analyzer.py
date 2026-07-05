@@ -126,15 +126,18 @@ def analyze_meeting(
         transcript_text = _format_segments(nearby)
 
         prompt = (
-            "This is page %d of the presentation '%s'.\n\n"
-            "Here is the meeting transcript around this section:\n%s\n\n"
-            "Which transcript segments discuss content on THIS page?"
+            "You are a meeting content analyzer. Look at this slide image and the transcript below.\n"
+            "Determine which transcript segments discuss THIS page's content.\n\n"
+            "This is page %d of '%s'.\n\n"
+            "Transcript:\n%s\n\n"
+            "Return JSON with: page_summary, matched_segments (with start/end/text/relevance), "
+            "discussion_summary, key_points, questions_raised, decisions.\n"
+            "Output ONLY valid JSON."
         ) % (page["page"], pdf_name, transcript_text)
 
         raw = vision_llm.vision(
             prompt=prompt,
             image_path=page["path"],
-            system=PAGE_MATCH_PROMPT,
             temperature=0.2,
         )
         analysis = _parse_json(raw)
