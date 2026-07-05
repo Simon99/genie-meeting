@@ -104,20 +104,32 @@ def analyze_meeting(
     if progress_callback:
         progress_callback("matching", 0.25)
 
-    transcript_text = _format_segments(segments)
     vision_llm = LMStudioClient(base_url=lm_studio_url, model=vision_model)
     text_llm = LMStudioClient(base_url=lm_studio_url, model=text_model)
+
+    # Estimate time range per page (evenly divided)
+    total_duration = segments[-1]["end"] if segments else 0
+    page_duration = total_duration / max(len(pages), 1)
 
     page_analyses = []
     for i, page in enumerate(pages):
         if progress_callback:
             progress_callback("matching", 0.25 + 0.4 * (i + 1) / len(pages))
 
+        # Send nearby segments (this page's estimated range +/- overlap)
+        est_start = max(0, i * page_duration - page_duration * 0.3)
+        est_end = min(total_duration, (i + 1) * page_duration + page_duration * 0.3)
+        nearby = [s for s in segments if s["end"] >= est_start and s["start"] <= est_end]
+        if not nearby:
+            nearby = segments
+
+        transcript_text = _format_segments(nearby)
+
         prompt = (
-            f"This is page {page['page']} of the presentation '{pdf_name}'.\n\n"
-            f"Here is the full meeting transcript with timestamps:\n{transcript_text}\n\n"
-            f"Which transcript segments discuss content on THIS page?"
-        )
+            "This is page %d of the presentation '%s'.\n\n"
+            "Here is the meeting transcript around this section:\n%s\n\n"
+            "Which transcript segments discuss content on THIS page?"
+        ) % (page["page"], pdf_name, transcript_text)
 
         raw = vision_llm.vision(
             prompt=prompt,
