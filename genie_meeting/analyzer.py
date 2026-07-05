@@ -234,7 +234,11 @@ def _parse_json(text: str) -> dict:
         return {"error": "parse_failed", "raw": text[:500]}
 
 
-def _format_time(seconds: float) -> str:
+def _format_time(seconds) -> str:
+    try:
+        seconds = float(seconds)
+    except (ValueError, TypeError):
+        return str(seconds)
     m = int(seconds // 60)
     s = int(seconds % 60)
     return "%02d:%02d" % (m, s)
