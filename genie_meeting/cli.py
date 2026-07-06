@@ -30,7 +30,8 @@ def main():
         print("Error: Video not found: %s" % video_path, file=sys.stderr)
         sys.exit(1)
 
-    output_dir = args.output or "%s_meeting_report" % pdf_path.stem
+    # Default output next to the input PDF (consistent with the other tools)
+    output_dir = args.output or str(pdf_path.with_suffix("")) + "_meeting_report"
 
     def on_progress(stage, pct):
         stages = {
@@ -45,17 +46,21 @@ def main():
         print("\r[%.0f%%] %s..." % (pct * 100, label), end="", flush=True)
 
     print("Processing: %s + %s" % (pdf_path, video_path))
-    result = analyze_meeting(
-        str(pdf_path),
-        str(video_path),
-        output_dir,
-        language=args.language,
-        whisper_model=args.whisper_model,
-        text_model=args.text_model,
-        vision_model=args.vision_model,
-        lm_studio_url=args.url,
-        progress_callback=on_progress,
-    )
+    try:
+        result = analyze_meeting(
+            str(pdf_path),
+            str(video_path),
+            output_dir,
+            language=args.language,
+            whisper_model=args.whisper_model,
+            text_model=args.text_model,
+            vision_model=args.vision_model,
+            lm_studio_url=args.url,
+            progress_callback=on_progress,
+        )
+    except (RuntimeError, ValueError) as e:
+        print("\nError: %s" % e, file=sys.stderr)
+        sys.exit(1)
     print("\nDone! %d pages, %d topics" % (result["pages"], result["topics"]))
     print("  Report:   %s" % result["report"])
     print("  Markdown: %s" % result["markdown"])
