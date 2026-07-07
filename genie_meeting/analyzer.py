@@ -341,7 +341,7 @@ def _complete_and_parse(llm, prompt: str, what: str, system: str = None,
     retry_prompt = prompt if required_key is None else (
         prompt + "\n\nREMINDER: output MUST be a JSON object with a "
                  "top-level \"%s\" array, exactly as specified." % required_key)
-    raw = llm.complete(prompt=retry_prompt, system=system, temperature=0, max_tokens=4096)
+    raw = llm.complete(prompt=retry_prompt, system=system, temperature=0, max_tokens=8192)
     try:
         result = extract_json(raw)
     except ValueError as e:
