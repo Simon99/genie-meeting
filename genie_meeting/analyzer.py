@@ -68,6 +68,7 @@ Rules:
 - Group related pages into the same topic; keep the "pages" list accurate (page numbers as integers)
 - Detect disputes/disagreements and list both positions
 - Do NOT include transcript quotes or source references; they are re-attached programmatically later
+- Write the report in the SAME language as the analyses content (do NOT translate; e.g. Chinese analyses -> Chinese report, keeping English technical terms as-is)
 - Keep the original language of the content
 - Output ONLY valid JSON"""
 
@@ -208,6 +209,7 @@ def analyze_meeting(
             text_llm,
             prompt="%s\n\n%s" % (SYNTHESIS_PROMPT, json.dumps(stripped, ensure_ascii=False)),
             what="report synthesis",
+            required_key="topics",
         )
     else:
         report = merge_structured(
@@ -215,6 +217,7 @@ def analyze_meeting(
             text_llm,
             merge_prompt=SYNTHESIS_PROMPT,
             budget_tokens=_MERGE_BUDGET_TOKENS,
+            required_key="topics",
         )
     if not isinstance(report, dict):
         raise RuntimeError(
@@ -308,26 +311,38 @@ def _vision_and_parse(llm, prompt: str, image_path: str, what: str) -> dict:
     return result
 
 
-def _complete_and_parse(llm, prompt: str, what: str, system: str = None) -> dict:
-    """Text LLM call + JSON extraction; one retry at temperature=0, then raise."""
+def _complete_and_parse(llm, prompt: str, what: str, system: str = None,
+                        required_key: str = None) -> dict:
+    """Text LLM call + JSON extraction; one retry at temperature=0, then raise.
+
+    required_key: schema anchor (e.g. "topics") — valid JSON in the wrong
+    shape retries with an explicit reminder, then raises.
+    """
+    def _ok(result):
+        return (isinstance(result, dict)
+                and (required_key is None or required_key in result))
+
     raw = llm.complete(prompt=prompt, system=system, temperature=0.2, max_tokens=4096)
     try:
         result = extract_json(raw)
-        if isinstance(result, dict):
+        if _ok(result):
             return result
     except ValueError:
         pass
 
-    raw = llm.complete(prompt=prompt, system=system, temperature=0, max_tokens=4096)
+    retry_prompt = prompt if required_key is None else (
+        prompt + "\n\nREMINDER: output MUST be a JSON object with a "
+                 "top-level \"%s\" array, exactly as specified." % required_key)
+    raw = llm.complete(prompt=retry_prompt, system=system, temperature=0, max_tokens=4096)
     try:
         result = extract_json(raw)
     except ValueError as e:
         raise RuntimeError(
             "LLM returned unparseable JSON for %s (after retry at temperature=0): %s"
             % (what, e))
-    if not isinstance(result, dict):
+    if not _ok(result):
         raise RuntimeError(
-            "LLM returned JSON %s for %s, expected an object" % (type(result).__name__, what))
+            "LLM output for %s missing required key %r (after retry)" % (what, required_key))
     return result
 
 
