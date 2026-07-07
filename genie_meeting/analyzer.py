@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 
 from genie_core.audio import transcribe_audio
@@ -10,6 +11,8 @@ from genie_core.pdf.split import split_pdf_to_images
 from genie_core.llm import LMStudioClient, extract_json, merge_structured
 from genie_core.report import esc, html_page
 from genie_core.text import format_time
+
+logger = logging.getLogger(__name__)
 
 
 PAGE_MATCH_PROMPT = """You are a meeting content analyzer. You have:
@@ -36,6 +39,11 @@ Relevance levels:
 - high: the segment explicitly discusses content visible on this page
 - medium: the segment is likely about this page (topical overlap, adjacent context)
 - low: the segment is only loosely related to this page
+
+Language: write discussion_summary, key_points, questions_raised and decisions
+in the SAME language as the transcript excerpts (do NOT translate — Chinese
+transcript means Chinese analysis, keeping English technical terms as-is).
+page_summary may follow the slide's own language.
 
 Output ONLY valid JSON."""
 
@@ -341,6 +349,10 @@ def _complete_and_parse(llm, prompt: str, what: str, system: str = None,
             "LLM returned unparseable JSON for %s (after retry at temperature=0): %s"
             % (what, e))
     if not _ok(result):
+        if isinstance(result, dict) and result:
+            logger.warning("LLM output for %s missing %r; coercing into wrapper",
+                           what, required_key)
+            return {"title": result.get("title", ""), required_key: [result]}
         raise RuntimeError(
             "LLM output for %s missing required key %r (after retry)" % (what, required_key))
     return result
