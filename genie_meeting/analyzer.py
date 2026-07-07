@@ -137,7 +137,7 @@ def analyze_meeting(
     if progress_callback:
         progress_callback("matching", 0.25)
 
-    vision_llm = LMStudioClient(base_url=lm_studio_url, model=vision_model)
+    vision_llm = LMStudioClient(base_url=lm_studio_url, model=vision_model, kind="vision")
     text_llm = LMStudioClient(base_url=lm_studio_url, model=text_model)
 
     # Estimate time range per page (evenly divided)

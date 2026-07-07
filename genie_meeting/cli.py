@@ -14,8 +14,8 @@ def main():
     parser.add_argument("-o", "--output", help="Output directory")
     parser.add_argument("--language", default="zh", help="Whisper language (default: zh)")
     parser.add_argument("--whisper-model", default="medium", help="Whisper model size")
-    parser.add_argument("--text-model", default="qwen3.6-35b-a3b-mtp", help="LLM for text synthesis")
-    parser.add_argument("--vision-model", default="qwen3-vl", help="Vision model for page parsing")
+    parser.add_argument("--text-model", default=None, help="LLM for text synthesis (default: auto-pick)")
+    parser.add_argument("--vision-model", default=None, help="Vision model for page parsing (default: auto-pick)")
     parser.add_argument("--url", default="http://localhost:1234/v1", help="LM Studio API URL")
 
     args = parser.parse_args()
