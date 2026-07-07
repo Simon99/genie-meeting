@@ -349,6 +349,10 @@ def _complete_and_parse(llm, prompt: str, what: str, system: str = None,
             "LLM returned unparseable JSON for %s (after retry at temperature=0): %s"
             % (what, e))
     if not _ok(result):
+        if isinstance(result, list) and result:
+            logger.warning("LLM output for %s is a bare array; coercing into %r",
+                           what, required_key)
+            return {"title": "", required_key: result}
         if isinstance(result, dict) and result:
             logger.warning("LLM output for %s missing %r; coercing into wrapper",
                            what, required_key)
